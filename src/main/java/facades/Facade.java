@@ -1,16 +1,14 @@
 package facades;
 
-import entities.Customer;
-import entities.ItemType;
-import entities.OrderLine;
-import entities.Ordre;
+import entities.Book;
+import entities.EBook;
+import entities.PaperBook;
 import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
-import javax.persistence.NoResultException;
 import javax.persistence.Query;
 
-public class Facade implements IFacade {
+public class Facade implements IPaperBookFacade, IEBookFacade, IBookFacade {
 
     private EntityManagerFactory emf;
 
@@ -25,20 +23,19 @@ public class Facade implements IFacade {
     }
 
     @Override
-    public Customer addCustomer(Customer cust)
+    public PaperBook addPaperBook(PaperBook pb)
     {
         EntityManager em = getEntityManager();
         try
         {
-            if (getCustomer(cust.getEmail()) != null)
+            if (em.find(PaperBook.class, pb.getISBN()) != null)
             {
                 return null;
             }
             em.getTransaction().begin();
-            em.persist(cust);
+            em.persist(pb);
             em.getTransaction().commit();
-            return cust;
-
+            return pb;
         } finally
         {
             em.close();
@@ -46,18 +43,12 @@ public class Facade implements IFacade {
     }
 
     @Override
-    public Customer getCustomer(String email)
+    public PaperBook getPaperBook(String isbn)
     {
         EntityManager em = getEntityManager();
         try
         {
-            Query q = em.createNamedQuery("Customer.findPersonEmail");
-            q.setParameter("email", email);
-            return (Customer) q.getSingleResult();
-
-        } catch (NoResultException ex)
-        {
-            return null;
+            return em.find(PaperBook.class, isbn);
         } finally
         {
             em.close();
@@ -65,12 +56,20 @@ public class Facade implements IFacade {
     }
 
     @Override
-    public Customer getCustomer(int id)
+    public PaperBook editPaperBook(PaperBook pb)
     {
         EntityManager em = getEntityManager();
         try
         {
-            return em.find(Customer.class, id);
+            PaperBook oldBook = em.find(PaperBook.class, pb.getISBN());
+            if (oldBook == null)
+            {
+                return null;
+            }
+            em.getTransaction().begin();
+            em.merge(pb);
+            em.getTransaction().commit();
+            return pb;
         } finally
         {
             em.close();
@@ -78,14 +77,153 @@ public class Facade implements IFacade {
     }
 
     @Override
-    public List<Customer> getAllCustomers()
+    public PaperBook deletePaperBook(PaperBook pb)
     {
         EntityManager em = getEntityManager();
         try
         {
-            Query q = em.createQuery("SELECT c FROM Customer c");
+            //skal være aktiv
+            PaperBook bookDelete = em.find(PaperBook.class, pb.getISBN());
+            if (bookDelete == null)
+            {
+                return null;
+            }
+            em.getTransaction().begin();
+            em.remove(bookDelete);
+            em.getTransaction().commit();
+            return bookDelete;
+        } finally
+        {
+            em.close();
+        }
+    }
+
+    @Override
+    public PaperBook deletePaperBook(String isbn)
+    {
+        EntityManager em = getEntityManager();
+        try
+        {
+            PaperBook b = em.find(PaperBook.class, isbn);
+            if (b == null)
+            {
+                return null;
+            }
+            em.getTransaction().begin();
+            em.remove(b);
+            em.getTransaction().commit();
+            return b;
+        } finally
+        {
+            em.close();
+        }
+    }
+
+    @Override
+    public EBook addEBook(EBook eb)
+    {
+        EntityManager em = getEntityManager();
+        try
+        {
+            if (em.find(EBook.class, eb.getISBN()) != null)
+            {
+                return null;
+            }
+            em.getTransaction().begin();
+            em.persist(eb);
+            em.getTransaction().commit();
+            return eb;
+        } finally
+        {
+            em.close();
+        }
+    }
+
+    @Override
+    public EBook GetEBook(String isbn)
+    {
+        EntityManager em = getEntityManager();
+        try
+        {
+            return em.find(EBook.class, isbn);
+        } finally
+        {
+            em.close();
+        }
+    }
+
+    @Override
+    public EBook editEBook(EBook eb)
+    {
+        EntityManager em = getEntityManager();
+        try
+        {
+            if (em.find(EBook.class, eb.getISBN()) == null)
+            {
+                return null;
+            }
+            em.getTransaction().begin();
+            em.merge(eb);
+            em.getTransaction().commit();
+            return eb;
+        } finally
+        {
+            em.close();
+        }
+    }
+
+    @Override
+    public EBook deleteEBook(EBook eb)
+    {
+        EntityManager em = getEntityManager();
+        try
+        {
+            EBook deb = em.find(EBook.class, eb.getISBN());
+            if (deb == null)
+            {
+                return null;
+            }
+            em.getTransaction().begin();
+            em.remove(deb);
+            em.getTransaction().commit();
+            return deb;
+        } finally
+        {
+            em.close();
+        }
+    }
+
+    @Override
+    public EBook deleteEBook(String isbn)
+    {
+        EntityManager em = getEntityManager();
+        try
+        {
+            EBook b = em.find(EBook.class, isbn);
+            if (b == null)
+            {
+                return null;
+            }
+            em.getTransaction().begin();
+            em.remove(b);
+            em.getTransaction().commit();
+            return b;
+        } finally
+        {
+            em.close();
+        }
+    }
+
+    @Override
+    public List<Book> getAllBooks()
+    {
+        EntityManager em = getEntityManager();
+        try
+        {
+            //descriminator column autogeneres i database, og holder styr på hvilken
+            //type bog det er.
+            Query q = em.createQuery("SELECT b FROM Book b");
             return q.getResultList();
-
         } finally
         {
             em.close();
@@ -93,59 +231,16 @@ public class Facade implements IFacade {
     }
 
     @Override
-    public Ordre getOrder(int id)
+    public Book addBook(Book book)
     {
-        EntityManager em = getEntityManager();
-        try
-        {
-            return em.find(Ordre.class, id);
-        } finally
-        {
-            em.close();
-        }
-    }
-
-    // Den her giver IKKE ordre med et id tilbage...     
-    public Ordre addOrderCustomer(Ordre order)
-    {
+        //har lavet book abstract, så du ikke kan instantiere den og fucke op.
         EntityManager em = getEntityManager();
         try
         {
             em.getTransaction().begin();
-            Customer cust = em.find(Customer.class, order.getCustomer().getId());
-            if (cust == null)
-            {
-                return null;
-            }
-            cust.addOrder(order);
-            em.merge(cust);
+            em.persist(book);
             em.getTransaction().commit();
-            return order;
-
-        } finally
-        {
-            em.close();
-        }
-    }
-
-    //opdaterer både cust orderlist og giver et order id tilbage lige når den er lavet.
-    @Override
-    public Ordre createOrder(Ordre order)
-    {
-        EntityManager em = getEntityManager();
-        try
-        {
-            Customer cust = em.find(Customer.class, order.getCustomer().getId());
-            if (cust == null)
-            {
-                return null;
-            }
-            cust.addOrder(order);
-            em.getTransaction().begin();
-            em.persist(order);
-            em.getTransaction().commit();
-            return order;
-
+            return book;
         } finally
         {
             em.close();
@@ -153,20 +248,12 @@ public class Facade implements IFacade {
     }
 
     @Override
-    public ItemType addItem(ItemType itemType)
+    public Book getBook(String isbn)
     {
         EntityManager em = getEntityManager();
         try
         {
-            if (em.find(ItemType.class, itemType.getName()) != null)
-            {
-                return null;
-            }
-
-            em.getTransaction().begin();
-            em.persist(itemType);
-            em.getTransaction().commit();
-            return itemType;
+            return em.find(Book.class, isbn);
         } finally
         {
             em.close();
@@ -174,45 +261,20 @@ public class Facade implements IFacade {
     }
 
     @Override
-    public OrderLine editOrderLine(OrderLine orderLine)
+    public Book editBook(Book book)
     {
         EntityManager em = getEntityManager();
         try
         {
-            OrderLine oldOrderLine = em.find(OrderLine.class, orderLine.getId());
-            if (oldOrderLine == null)
+            Book oldBook = em.find(Book.class, book.getISBN());
+            if (oldBook == null)
             {
                 return null;
             }
             em.getTransaction().begin();
-            em.merge(orderLine);
+            em.merge(book);
             em.getTransaction().commit();
-            return orderLine;
-
-        } finally
-        {
-            em.close();
-        }
-    }
-
-    //lavet 
-    private OrderLine updateOrderline(OrderLine oldOrderline, OrderLine orderLine)
-    {
-        EntityManager em = getEntityManager();
-        try
-        {
-            Ordre order = em.find(Ordre.class, oldOrderline.getOrdre().getId());
-            if (order == null)
-            {
-                return null;
-            }
-            orderLine.setId(oldOrderline.getId());
-            order.findOrderLineAndUpdate(orderLine);
-            em.getTransaction().begin();
-            em.merge(orderLine);
-            em.getTransaction().commit();
-            return orderLine;
-
+            return book;
         } finally
         {
             em.close();
@@ -220,29 +282,16 @@ public class Facade implements IFacade {
     }
 
     @Override
-    public OrderLine addOrderLine(OrderLine orderLine)
+    public Book deleteBook(String isbn)
     {
         EntityManager em = getEntityManager();
         try
         {
-            Ordre ord = em.find(Ordre.class, orderLine.getOrdre().getId());
-            if (ord == null)
-            {
-                return null;
-            }
-            //behøves ikke, bare lavet for prøve at forstå, hvordan det virker.
-            OrderLine ol = ord.findTypeInOrder(orderLine.getItem());
-            if (ol != null)
-            {
-                System.out.println("Item already exist in orderlist");
-                return updateOrderline(ol, orderLine);
-            }
-
-            ord.addOrderLine(orderLine);
+            Book b = em.find(Book.class, isbn);
             em.getTransaction().begin();
-            em.persist(orderLine);
+            em.remove(b);
             em.getTransaction().commit();
-            return orderLine;
+            return b;
         } finally
         {
             em.close();
